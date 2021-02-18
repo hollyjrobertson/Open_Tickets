@@ -9,10 +9,14 @@ env = environ.Env(
 )
 # reading .env file
 environ.Env.read_env()
-    
-def load_relevant_data():
-    url = env('PROD_CHERWELL_API') + "api/V1/getsearchresults/association/" + env('Incident_bus_obj_id')  + "scope/Global/scopeowner/(None)/searchname/" + env('SEARCH_OPEN_SD_TICKETS')
 
+def pullCherwellData():
+    sd_7_url = env('PROD_CHERWELL_API') + "api/V1/getsearchresults/association/" + env('Incident_bus_obj_id')  + "scope/Global/scopeowner/(None)/searchname/" + env('SD_7_CATS')
+    sd_30_url = env('PROD_CHERWELL_API') + "api/V1/getsearchresults/association/" + env('Incident_bus_obj_id')  + "scope/Global/scopeowner/(None)/searchname/" + env('SD_30_CATS')
+    it_url = env('PROD_CHERWELL_API') + "api/V1/getsearchresults/association/" + env('Incident_bus_obj_id')  + "scope/Global/scopeowner/(None)/searchname/" + env('ITSD_72')
+    cc_url = env('PROD_CHERWELL_API') + "api/V1/getsearchresults/association/" + env('Incident_bus_obj_id')  + "scope/Global/scopeowner/(None)/searchname/" + env('CCSD_72')
+    url = env('PROD_CHERWELL_API') + "api/V1/getsearchresults/association/" + env('Incident_bus_obj_id')  + "scope/Global/scopeowner/(None)/searchname/" + env('SEARCH_OPEN_SD_TICKETS')
+    
     payload={}
     headers = {
         'Content-Type': 'application/json',
@@ -21,11 +25,26 @@ def load_relevant_data():
     }
     
     if btoken != None:
-        response = requests.request("GET", url, headers=headers, data=payload)
-        total_tickets = formatResponse(response)
+        try:
+            SD_30CatList = (formatCherwellResponse(requests.request("GET", sd_30_url, headers=headers, data=payload)))
+            SD_7CatList = (formatCherwellResponse(requests.request("GET", sd_7_url, headers=headers, data=payload)))
+            ITSD_72List = (formatCherwellResponse(requests.request("GET", it_url, headers=headers, data=payload)))
+            CCSD_72List  = (formatCherwellResponse(requests.request("GET", cc_url, headers=headers, data=payload)))
+            SD_OpenList = (formatCherwellResponseLimited(requests.request("GET", url, headers=headers, data=payload)))
+        except Exception as e:
+            print('Error in pullCherwellData', e)
     else:
-        total_tickets = None
-    return total_tickets 
+        print('Error in getting btoken')
+    
+    try:
+        parse_CC_v_IT_list(SD_OpenList)
+        setSD_30CatList(sortListsByCategory(SD_30CatList))
+        setSD_7CatList(sortListsByCategory(SD_7CatList))
+        setITSD72List(sortListsByEmployee(ITSD_72List))
+        setCCSD72List(sortListsByEmployee(CCSD_72List))
+    except Exception as e:
+        print('Error in parsing/setting', e)
+
 
 def setBtoken():
     global btoken
@@ -35,10 +54,10 @@ def setBtoken():
     payload='auth_mode=' + env('AUTH_MODE') + '&grant_type=' + env('GRANT_TYPE') + '&client_id=' + env('CHERWELL_CLIENT_ID') + '&username=' + env('CHERWELL_USERNAME') + '&password=' + env('CHERWELL_PWD')
     
     headers = {
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'Accept': 'application/json',
-    'Authorization': 'Bearer ' + env('CHERWELL_BEARER'),
-    'Cookie': env('CHERWELL_COOKIE')
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer ' + env('CHERWELL_BEARER'),
+        'Cookie': env('CHERWELL_COOKIE')
     }
     response = requests.request("POST", url, headers=headers, data=payload)
     
@@ -57,69 +76,116 @@ def getBToken():
     
     return btoken
 
-def formatResponse(response):
-    aged_ticket_list = []
+def formatCherwellResponseLimited(response):
+    ticket_list = []
     total = len(response.json()['businessObjects'])
     i = 0
-    total_tickets = 1
     while i < total:
+        ticket = response.json()['businessObjects'][i]['fields'][1]['value']  
+        team = response.json()['businessObjects'][i]['fields'][6]['value']  
         employee = response.json()['businessObjects'][i]['fields'][7]['value']
-        ticket = response.json()['businessObjects'][i]['fields'][1]['value'] 
-        created = response.json()['businessObjects'][i]['fields'][3]['value']
-        team = response.json()['businessObjects'][i]['fields'][6]['value']   
-        aged_ticket_list.append(
+        ticket_list.append(
             {
-                'Total' : total_tickets,
                 'Ticket': ticket, 
-                'Created': created, 
                 'Team': team,
                 'Employee': employee,
             }
         )
         
         i += 1
-        
-    format_aged_ticket_list(aged_ticket_list)
     
-    return len(aged_ticket_list)
+    return ticket_list
 
-def format_aged_ticket_list(list):
+def formatCherwellResponse(response):
+    ticket_list = []
+    total = len(response.json()['businessObjects'])
+    i = 0
+    while i < total:
+        ticket = response.json()['businessObjects'][i]['fields'][1]['value']  
+        cat = response.json()['businessObjects'][i]['fields'][4]['value'] 
+        subcat = response.json()['businessObjects'][i]['fields'][5]['value'] 
+        created = response.json()['businessObjects'][i]['fields'][14]['value']
+        team = response.json()['businessObjects'][i]['fields'][16]['value']  
+        employee = response.json()['businessObjects'][i]['fields'][17]['value']
+        ticket_list.append(
+            {
+                'Ticket': ticket, 
+                'Created': created, 
+                'Category': cat,
+                'Subcategory': subcat,
+                'Team': team,
+                'Employee': employee,
+            }
+        )
+        
+        i += 1
+    
+    return ticket_list
+
+def parse_CC_v_IT_list(list):
     temp_cc_aged_ticket_list = []
     temp_it_aged_ticket_list = []
     cc_aged_ticket_list = []
     it_aged_ticket_list = []
-    cc_counter = collections.Counter()
-    it_counter = collections.Counter()
     
     for employee in list:
         if (employee['Team'] == 'Call Center Service Desk'):
             temp_cc_aged_ticket_list.append(employee)
-        else:
+        elif (employee['Team'] == 'Service Desk'):
             temp_it_aged_ticket_list.append(employee)
     
-    for x in temp_cc_aged_ticket_list:
-        name = x['Employee']
-        cc_counter.update({name})
-    
-    for y in temp_it_aged_ticket_list:
-        name = y['Employee']
-        it_counter.update({name})   
-
-    for m in cc_counter.items():
-        cc_aged_ticket_list.append(m)
-    
-    for x in it_counter.items():
-        it_aged_ticket_list.append(x)
-    
-    it_aged_ticket_list.sort(reverse=False, key=lambda employee: employee[1])
-    cc_aged_ticket_list.sort(reverse=False, key=lambda employee: employee[1])
-
+    it_aged_ticket_list = sortListsByEmployee(temp_it_aged_ticket_list)
+    cc_aged_ticket_list = sortListsByEmployee(temp_cc_aged_ticket_list)
     setTicketLists(cc_aged_ticket_list, it_aged_ticket_list)
 
+def sortListsByCategory(list):
+    ticket_list = []
+    temp_counter = collections.Counter()
+            
+    for i in list:
+        cat = i['Category']
+        temp_counter.update({cat})
+
+    for x in temp_counter.items():
+        ticket_list.append(x) 
+    
+    ticket_list.sort(reverse=False, key=lambda cat: cat[1]) 
+    return ticket_list
+
+def sortListsByEmployee(list):
+    ticket_list = []
+    temp_counter = collections.Counter()
+            
+    for i in list:
+        employee = i['Employee']
+        temp_counter.update({employee})
+
+    for x in temp_counter.items():
+        ticket_list.append(x) 
+    
+    ticket_list.sort(reverse=False, key=lambda employee: employee[1]) 
+    
+    return ticket_list
+
+def setCCSD72List(list):
+    global cc_72_ticket_list_totals
+    
+    if list:
+        cc_72_ticket_list_totals = list
+    else:
+        cc_72_ticket_list_totals = None
+
+def setITSD72List(list):
+    global it_72_ticket_list_totals
+
+    if list:
+        it_72_ticket_list_totals = list
+    else:
+        it_72_ticket_list_totals = None
+        
 def setTicketLists(cc_aged_ticket_list, it_aged_ticket_list):
     global it_aged_ticket_totals
     global cc_aged_ticket_totals
-    
     if it_aged_ticket_list:
         if cc_aged_ticket_list:
             it_aged_ticket_totals = it_aged_ticket_list
@@ -131,12 +197,45 @@ def setTicketLists(cc_aged_ticket_list, it_aged_ticket_list):
     else:
         it_aged_ticket_totals = None
         cc_aged_ticket_totals = None
+    
+
+def setSD_30CatList(list):
+    global sd_30_cats
+    
+    if list:
+        sd_30_cats = list
+    else:
+        sd_30_cats = None
+    
+def setSD_7CatList(list):
+    global sd_7_cats
+
+    if list:
+        sd_7_cats = list
+    else:
+        sd_7_cats = None
+        
+def getSD_30CatList():
+    try:
+        sd_30_cats
+    except:
+        pullCherwellData()
+        
+    return sd_30_cats
+    
+def getSD_7CatList():
+    try:
+        sd_7_cats
+    except:
+        pullCherwellData()
+        
+    return sd_7_cats
 
 def getCCSDTickets():
     try:
         cc_aged_ticket_totals
     except:
-        load_relevant_data()
+        pullCherwellData()
     
     return cc_aged_ticket_totals
         
@@ -144,110 +243,22 @@ def getITSDTickets():
     try:
         it_aged_ticket_totals
     except:
-        load_relevant_data()
+        pullCherwellData()
     
     return it_aged_ticket_totals
 
+def getITSD72Tickets():
+    try:
+        it_72_ticket_list_totals
+    except:
+        pullCherwellData()
+    
+    return it_72_ticket_list_totals
 
-
-
-
-	# # This can be changed to your local directory (./) for testing purposes
-	# BASE_PATH = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/'
-	# #BASE_PATH = './data/'
-	# if us_data and mode == Mode.CASES:
-	# 	PATH = BASE_PATH + 'time_series_covid19_confirmed_US.csv'
-	# elif us_data and mode == Mode.DEATHS:
-	# 	PATH = BASE_PATH + 'time_series_covid19_deaths_US.csv'
-	# elif not us_data and mode == Mode.CASES:
-	# 	PATH = BASE_PATH + 'time_series_covid19_confirmed_global.csv'
-	# elif not us_data and mode == Mode.DEATHS:
-	# 	PATH = BASE_PATH + 'time_series_covid19_deaths_global.csv'
-
-	# return pd.read_csv(PATH)
-
-def get_state_names():
-    df = load_relevant_data()
-    return df['Province_State'].unique()
-
-def get_country_names():
-    df = load_relevant_data(us_data=False)
-    return df['Country/Region'].unique()
-
-# # United States of America Python Dictionary to translate States,
-# # Districts & Territories to Two-Letter codes and vice versa.
-# #
-# # https://gist.github.com/rogerallen/1583593
-# #
-# # Dedicated to the public domain.  To the extent possible under law,
-# # Roger Allen has waived all copyright and related or neighboring
-# # rights to this code.
-
-# us_state_abbrev = {
-#     'Alabama': 'AL',
-#     'Alaska': 'AK',
-#     'American Samoa': 'AS',
-#     'Arizona': 'AZ',
-#     'Arkansas': 'AR',
-#     'California': 'CA',
-#     'Colorado': 'CO',
-#     'Connecticut': 'CT',
-#     'Delaware': 'DE',
-#     'District of Columbia': 'DC',
-#     'Florida': 'FL',
-#     'Georgia': 'GA',
-#     'Guam': 'GU',
-#     'Hawaii': 'HI',
-#     'Idaho': 'ID',
-#     'Illinois': 'IL',
-#     'Indiana': 'IN',
-#     'Iowa': 'IA',
-#     'Kansas': 'KS',
-#     'Kentucky': 'KY',
-#     'Louisiana': 'LA',
-#     'Maine': 'ME',
-#     'Maryland': 'MD',
-#     'Massachusetts': 'MA',
-#     'Michigan': 'MI',
-#     'Minnesota': 'MN',
-#     'Mississippi': 'MS',
-#     'Missouri': 'MO',
-#     'Montana': 'MT',
-#     'Nebraska': 'NE',
-#     'Nevada': 'NV',
-#     'New Hampshire': 'NH',
-#     'New Jersey': 'NJ',
-#     'New Mexico': 'NM',
-#     'New York': 'NY',
-#     'North Carolina': 'NC',
-#     'North Dakota': 'ND',
-#     'Northern Mariana Islands':'MP',
-#     'Ohio': 'OH',
-#     'Oklahoma': 'OK',
-#     'Oregon': 'OR',
-#     'Pennsylvania': 'PA',
-#     'Puerto Rico': 'PR',
-#     'Rhode Island': 'RI',
-#     'South Carolina': 'SC',
-#     'South Dakota': 'SD',
-#     'Tennessee': 'TN',
-#     'Texas': 'TX',
-#     'Utah': 'UT',
-#     'Vermont': 'VT',
-#     'Virgin Islands': 'VI',
-#     'Virginia': 'VA',
-#     'Washington': 'WA',
-#     'West Virginia': 'WV',
-#     'Wisconsin': 'WI',
-#     'Wyoming': 'WY'
-# }
-
-# # thank you to @kinghelix and @trevormarburger for this idea
-# abbrev_us_state = dict(map(reversed, us_state_abbrev.items()))
-
-# # Simple test examples
-# if __name__ == '__main__':
-#     print("Wisconin --> WI?", us_state_abbrev['Wisconsin'] == 'WI')
-#     print("WI --> Wisconin?", abbrev_us_state['WI'] == 'Wisconsin')
-#     print("Number of entries (50 states, DC, 5 Territories) == 56? ", 56 == len(us_state_abbrev))
-
+def getCCSD72Tickets():
+    try:
+        cc_72_ticket_list_totals
+    except:
+        pullCherwellData()
+    
+    return cc_72_ticket_list_totals
