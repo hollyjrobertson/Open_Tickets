@@ -2,6 +2,10 @@ import pandas as pd
 import environ
 import requests
 import collections
+import logging
+
+
+logging.basicConfig(level=logging.DEBUG, filename='tmp/dailyReport.log', format='%(asctime)s %(levelname)s:%(message)s')
 
 env = environ.Env(
     # set casting, default value
@@ -50,9 +54,7 @@ def setBtoken():
     global btoken
     
     url = env('PROD_CHERWELL_API') + "token"
-
     payload='auth_mode=' + env('AUTH_MODE') + '&grant_type=' + env('GRANT_TYPE') + '&client_id=' + env('CHERWELL_CLIENT_ID') + '&username=' + env('CHERWELL_USERNAME') + '&password=' + env('CHERWELL_PWD')
-    
     headers = {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
@@ -197,7 +199,6 @@ def setTicketLists(cc_aged_ticket_list, it_aged_ticket_list):
     else:
         it_aged_ticket_totals = None
         cc_aged_ticket_totals = None
-    
 
 def setSD_30CatList(list):
     global sd_30_cats

@@ -75,7 +75,6 @@ def setCCSD72Values(cc_72_values):
 
 def setSD_7_Categories(sd_7_cats):
     global SD_7_Cats
-    
     if sd_7_cats:
         SD_7_Cats = sd_7_cats
     else:
@@ -125,7 +124,6 @@ def setITSDNames(names):
         
 def setITSDValues(values):
     global ITSD_Values
-    
     if values:
         ITSD_Values = values
     else:
@@ -410,4 +408,3 @@ def plot_data(today):
     ccsd_fig.write_image('tmp/CCSD_Chart.png', width=900, height=800)
     plot_72_data(today)
     plot_category_data()
-    #fig.show()

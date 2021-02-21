@@ -5,6 +5,7 @@ from email.message import EmailMessage
 from generate_report import create_analytics_report
 import environ
 import boto3
+import logging
 
 env = environ.Env(
     # set casting, default value
@@ -16,6 +17,8 @@ environ.Env.read_env()
 
 #def lambda_handler(event, context):
 def lambda_handler():
+    logging.basicConfig(level=logging.DEBUG, filename='tmp/dailyReport.log', format='%(asctime)s %(levelname)s:%(message)s')
+    
     # Production variables
     # EMAIL_ADDRESS = os.environ.get('EMAIL_ADDRESS')
     # EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD')
@@ -27,7 +30,7 @@ def lambda_handler():
     S3_Bucket = env('S3_BUCKET')
     
     msg = EmailMessage()
-    msg['Subject'] = 'TEST from Lambda Safelite Ticket Overview for SD'
+    msg['Subject'] = 'Ticket Overview for SD'
     msg['From'] = EMAIL_ADDRESS
     msg['To'] = ['holly.robertson@safelite.com']
     
@@ -44,16 +47,16 @@ def lambda_handler():
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             try:
                 smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-                print("Successfully Logged-in")
+                logging.debug('Successfully Logged-in')
             except Exception as e:
-                print('Error within Logging In', str(e))
+                logging.error('Error within Logging In ', str(e))
             
             try:
                 smtp.send_message(msg)
-                print("Message Sent Successfully")
+                logging.debug("Message Sent Successfully")
             except Exception as f:
-                print('Error with sending email', str(f))
+                logging.error('Error with sending email ', str(e))
     except Exception as h:
-        print('Error with WITH', str(h))
+        logging.error('Error with opening connection to smtp ', str(h))
 
 lambda_handler()
