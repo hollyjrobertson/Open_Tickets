@@ -3,137 +3,30 @@ import plotly.graph_objects as g
 import os
 from helper import getCCSDTickets, getITSDTickets, getCCSD72Tickets, getITSD72Tickets, getSD_7CatList, getSD_30CatList
 
-def format_lists():
-    it_names, it_72, it_values, it_72_values = [], [], [], []
-    cc_names, cc_72, cc_values, cc_72_values = [], [], [], []
-    sd_30_cats, sd_30_values, sd_7_cats, sd_7_values = [], [], [], []
+def format_list(list):
+    names = []
+    values = []
     
-    for i in getITSDTickets():
-        it_names.append(i[0])
-        it_values.append(i[1])
-    
-    for h in getITSD72Tickets():
-        it_72.append(h[0])
-        it_72_values.append(h[1])
-    
-    for j in getCCSDTickets():
-        cc_names.append(j[0])
-        cc_values.append(j[1])
-
-    for k in getCCSD72Tickets():
-        cc_72.append(k[0])
-        cc_72_values.append(k[1])
-    
-    for a in getSD_7CatList():
-        sd_7_cats.append(a[0])
-        sd_7_values.append(a[1])
-    
-    for b in getSD_30CatList():
-        sd_30_cats.append(b[0])
-        sd_30_values.append(b[1])
-    
-    setITSDNames(it_names)
-    setITSDValues(it_values)
-    setSD_7_Categories(sd_7_cats)
-    setSD_7_CatValues(sd_7_values)
-    setSD_30_Categories(sd_30_cats)
-    setSD_30_CatValues(sd_30_values)
-    setITSD72Names(it_72)
-    setITSD72Values(it_72_values)
-    setCCSDNames(cc_names)
-    setCCSDValues(cc_values)
-    setCCSD72Names(cc_72)
-    setCCSD72Values(cc_72_values)
-
-def setITSD72Names(it_72):
-    global ITSD_72_Names
-    if it_72:
-        ITSD_72_Names = it_72
-    else:
-        ITSD_72_Names = None
+    try:
+        for i in list:
+            names.append(i[0])
+            values.append(i[1])
+    except TypeError as t:
+        names = [0]
+        values = [0]
         
-def setITSD72Values(it_72_values):
-    global ITSD_72_Values
-    if it_72_values:
-        ITSD_72_Values = it_72_values
-    else:
-        ITSD_72_Values = None
-        
-def setCCSD72Names(cc_72):
-    global CCSD_72_Names
-    if cc_72:
-        CCSD_72_Names= cc_72
-    else:
-        CCSD_72_Names = None
-        
-def setCCSD72Values(cc_72_values):
-    global CCSD_72_Values
-    if cc_72_values:
-        CCSD_72_Values = cc_72_values
-    else:
-        CCSD_72_Values = None
+    return names, values
 
-def setSD_7_Categories(sd_7_cats):
-    global SD_7_Cats
-    if sd_7_cats:
-        SD_7_Cats = sd_7_cats
-    else:
-        SD_7_Cats = None
-
-def setSD_7_CatValues(sd_7_values):
-    global SD_7_CatValues
-    if sd_7_values:
-        SD_7_CatValues = sd_7_values
-    else:
-        SD_7_CatValues = None
-
-def setSD_30_Categories(sd_30_cats):   
-    global SD_30_Cats
-    if sd_30_cats:
-        SD_30_Cats = sd_30_cats
-    else:
-        SD_30_Cats = None
-
-def setSD_30_CatValues(sd_30_values):
-    global SD_30_CatValues
-    if sd_30_values:
-        SD_30_CatValues = sd_30_values
-    else:
-        SD_30_CatValues = None
-
-def setCCSDNames(cc_names):
-    global CCSD_Names
-    if cc_names:
-        CCSD_Names = cc_names
-    else:
-        CCSD_Names = None
-
-def setCCSDValues(cc_values):
-    global CCSD_Values
-    if cc_values:
-        CCSD_Values = cc_values
-    else:
-        CCSD_Values = None
-
-def setITSDNames(names):
+def setITSDChart():
     global ITSD_Names
-    if names:
-        ITSD_Names = names
-    else:
-        ITSD_Names = None
-        
-def setITSDValues(values):
     global ITSD_Values
-    if values:
-        ITSD_Values = values
-    else:
-        ITSD_Values = None
+    ITSD_Names, ITSD_Values = format_list(getITSDTickets())  
         
 def getITSDNames():
     try:
         ITSD_Names
     except: 
-        format_lists()
+        setITSDChart()
         
     return ITSD_Names
 
@@ -141,89 +34,114 @@ def getITSDValues():
     try:
         ITSD_Values
     except: 
-        format_lists()
-    
+        setITSDChart()
+        
     return ITSD_Values
+
+def setCCSDChart():
+    global CCSD_Names
+    global CCSD_Values
+    CCSD_Names, CCSD_Values = format_list(getCCSDTickets())
+    
+def getCCSDNames():
+    try:
+        CCSD_Names
+    except: 
+        setCCSDChart()
+    
+    return CCSD_Names
+
+def getCCSDValues():
+    try:
+        CCSD_Values
+    except: 
+        setCCSDChart()
+
+    return CCSD_Values
+
+def setSD_7DayChart():
+    global SD_7_Cats
+    global SD_7_CatValues
+    SD_7_Cats, SD_7_CatValues = format_list(getSD_7CatList())
 
 def getSD_7_Categories():
     try:
         SD_7_Cats
-    except:
-        format_lists()
+    except: 
+        setSD_7DayChart()
     
     return SD_7_Cats
 
 def getSD_7_CatValues():
     try:
         SD_7_CatValues
-    except:
-        format_lists()
-    
+    except: 
+        setSD_7DayChart()
+
     return SD_7_CatValues
+
+def setSD_30DayChart():
+    global SD_30_Cats
+    global SD_30_CatValues
+    SD_30_Cats, SD_30_CatValues = format_list(getSD_30CatList())
 
 def getSD_30_Categories():
     try:
         SD_30_Cats
-    except:
-        format_lists()
+    except: 
+        setSD_30DayChart()
     
     return SD_30_Cats
 
 def getSD_30_CatValues():
     try:
         SD_30_CatValues
-    except:
-        format_lists()
-    
+    except: 
+        setSD_30DayChart()
+
     return SD_30_CatValues
+
+def setITSD_72DayChart():
+    global ITSD_72_Names
+    global ITSD_72_Values
+    ITSD_72_Names, ITSD_72_Values = format_list(getITSD72Tickets())
 
 def getITSD72Names():
     try:
         ITSD_72_Names
-    except:
-        format_lists()
+    except: 
+        setITSD_72DayChart()
     
     return ITSD_72_Names
 
 def getITSD72Values():
     try:
         ITSD_72_Values
-    except:
-        format_lists()
-        
+    except: 
+        setITSD_72DayChart()
+
     return ITSD_72_Values
-        
+
+def setCCSD_72DayChart():
+    global CCSD_72_Names
+    global CCSD_72_Values
+    CCSD_72_Names, CCSD_72_Values = format_list(getCCSD72Tickets())
+
 def getCCSD72Names():
     try:
         CCSD_72_Names
-    except:
-        format_lists()
-        
+    except: 
+        setCCSD_72DayChart()
+    
     return CCSD_72_Names
 
 def getCCSD72Values():
     try:
         CCSD_72_Values
-    except:
-        format_lists()
-    
-    return CCSD_72_Values
-        
-def getCCSDValues():
-    try:
-        CCSD_Values
-    except:
-        format_lists()
-    
-    return CCSD_Values
+    except: 
+        setCCSD_72DayChart()
 
-def getCCSDNames():
-    try:
-        CCSD_Names
-    except:
-        format_lists()
-    
-    return CCSD_Names
+    return CCSD_72_Values
 
 def plot_category_data():
     x_7 = getSD_7_CatValues()
@@ -285,7 +203,6 @@ def plot_category_data():
     sd_7_fig.write_image('tmp/SD_7_Chart.png', width=900, height=1500, scale=1)
     sd_30_fig.write_image('tmp/SD_30_Chart.png', width=900, height=1500, scale=1)
     
-
 def plot_72_data(today):
     x_ITSD = getITSD72Values()
     y_ITSD = getITSD72Names()
@@ -346,7 +263,6 @@ def plot_72_data(today):
     itsd72_fig.write_image('tmp/ITSD_72_Chart.png', width=900, height=800, scale=1)
     ccsd72_fig.write_image('tmp/CCSD_72_Chart.png', width=900, height=800, scale=1)
     
-
 def plot_data(today):
     x_ITSD = getITSDValues()
     y_ITSD = getITSDNames()

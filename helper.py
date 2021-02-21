@@ -59,7 +59,7 @@ def setBtoken():
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
         'Authorization': 'Bearer ' + env('CHERWELL_BEARER'),
-        'Cookie': env('CHERWELL_COOKIE')
+        'Cookie': env('CHERWELL_COOKIE'),
     }
     response = requests.request("POST", url, headers=headers, data=payload)
     
@@ -263,3 +263,4 @@ def getCCSD72Tickets():
         pullCherwellData()
     
     return cc_72_ticket_list_totals
+
